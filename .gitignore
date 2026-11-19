@@ -1,0 +1,34 @@
+# Environments
+.venv/
+env/
+venv/
+__pycache__/
+*.pyc
+
+# Local Whisper models & temp cache
+.cache/
+temp_*.wav
+
+# Secrets & credentials
+.env
+client_secret.json
+token.json
+
+# Local processing media (keep structure via .gitkeep)
+videos/input/*
+!videos/input/.gitkeep
+videos/processed/*
+!videos/processed/.gitkeep
+videos/thumbnails/*
+!videos/thumbnails/.gitkeep
+videos/background_music/*
+!videos/background_music/.gitkeep
+
+# SQLite database and temporary files
+database/*.db
+database/*.db-wal
+database/*.db-shm
+logs/*.log
+
+# Pytest
+.pytest_cache/

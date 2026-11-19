@@ -1,0 +1,28 @@
+# AutoTube AI Requirements
+# Zero recurring investment - Free and open-source stack
+
+# Dashboard & Web Interface
+streamlit>=1.35.0
+
+# Video & Image Processing
+opencv-python-headless>=4.8.0.76
+pillow>=10.0.0
+numpy>=1.24.0
+scipy>=1.11.0
+
+# Background Automation & Scheduling
+apscheduler>=3.10.0
+watchdog>=4.0.0
+
+# Official YouTube API & Google OAuth 2.0
+google-api-python-client>=2.120.0
+google-auth-oauthlib>=1.2.0
+google-auth-httplib2>=0.2.0
+
+# Local AI Speech-to-Text & Karaoke Timestamps
+faster-whisper>=1.0.0
+
+# Environment & Utilities
+python-dotenv>=1.0.0
+requests>=2.31.0
+pytest>=8.0.0
