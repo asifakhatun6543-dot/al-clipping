@@ -58,9 +58,10 @@ class YouTubeAuthenticator:
             log_error("YouTubeAuth", f"Failed to load or refresh token: {e}")
             return None
 
-    def start_local_auth_flow(self, port: int = 8088) -> Tuple[bool, str]:
+    def start_local_auth_flow(self, port: int = 0) -> Tuple[bool, str]:
         """
         Runs the local browser authorization flow for Google OAuth.
+        Uses dynamic port allocation (port=0) to prevent port conflicts (WinError 10048).
         Generates and saves token.json upon approval.
         """
         if not self.is_configured():
@@ -71,10 +72,11 @@ class YouTubeAuthenticator:
                 str(self.client_secret_path),
                 scopes=SCOPES
             )
-            # Run local webserver to handle redirect
+            # Use port=0 so OS assigns an open ephemeral port without conflict
             creds = flow.run_local_server(
                 port=port,
                 prompt="consent",
+                open_browser=True,
                 success_message="AutoTube AI YouTube Authentication Successful! You can close this window now."
             )
             with open(self.token_path, "w", encoding="utf-8") as f:

@@ -43,8 +43,14 @@ st.markdown("---")
 col_setup, col_guide = st.columns([6, 6])
 
 with col_setup:
-    st.subheader("🔑 Step 1: Upload `client_secret.json`")
-    uploaded_secret = st.file_uploader("Upload your OAuth 2.0 Client Secret JSON file:", type=["json"])
+    st.subheader("🔑 Step 1: OAuth Credentials Status")
+    if is_configured:
+        st.success("✅ `client_secret.json` is installed and verified!")
+        st.caption(f"File location: `{config.client_secret_path}`")
+    else:
+        st.info("Upload your OAuth 2.0 Client Secret JSON file below:")
+
+    uploaded_secret = st.file_uploader("Upload new / replace Client Secret JSON:", type=["json"])
     if uploaded_secret is not None:
         if st.button("Save client_secret.json", key="btn_save_secret"):
             with open(config.client_secret_path, "wb") as f:
@@ -53,9 +59,9 @@ with col_setup:
             st.rerun()
 
     st.subheader("🔐 Step 2: Authorize YouTube Channel")
-    st.write("This opens a local Google login window to securely approve YouTube upload permission.")
+    st.write("Click below to open the Google authorization window and connect your YouTube channel.")
     if st.button("🚀 Connect YouTube Account (Run OAuth)", type="primary", disabled=not is_configured):
-        with st.spinner("Waiting for Google authorization in browser..."):
+        with st.spinner("Opening Google login window in your browser..."):
             success, msg = auth.start_local_auth_flow()
             if success:
                 st.success(msg)
