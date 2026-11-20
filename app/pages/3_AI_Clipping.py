@@ -26,30 +26,39 @@ input_mode = st.radio(
 )
 
 target_video_path = None
-source_title = None
+cached_meta = None
 
 if input_mode == "🔗 Web Video URL (YouTube / Online Video)":
     st.markdown("#### 🌐 Paste Video Link")
     input_url = st.text_input(
         "YouTube / Web Video URL:",
         placeholder="e.g. https://youtu.be/4gWOqYhxiko?si=DCo2kTxgAsW5hlGM"
-    )
-    if input_url.strip():
-        try:
-            with st.spinner("Fetching video preview..."):
-                preview_meta = url_downloader.extract_info(input_url.strip())
-            
+    ).strip()
+
+    if input_url:
+        # Check session cache to prevent repeated fetching on every UI rerun
+        cache_key = f"meta_{input_url}"
+        if cache_key not in st.session_state:
+            with st.spinner("⚡ Fetching video details..."):
+                try:
+                    st.session_state[cache_key] = url_downloader.extract_info(input_url)
+                except Exception as e:
+                    st.error(f"Could not load video: {e}")
+                    st.session_state[cache_key] = None
+
+        cached_meta = st.session_state.get(cache_key)
+
+        if cached_meta:
             c_img, c_info = st.columns([3, 7])
             with c_img:
-                if preview_meta.get("thumbnail"):
-                    st.image(preview_meta["thumbnail"], use_container_width=True)
+                if cached_meta.get("thumbnail"):
+                    st.image(cached_meta["thumbnail"], use_container_width=True)
             with c_info:
-                st.markdown(f"### {preview_meta['title']}")
-                st.caption(f"👤 Channel: **{preview_meta['uploader']}** | ⏱ Duration: **{preview_meta['duration']:.1f}s** ({int(preview_meta['duration']//60)}m {int(preview_meta['duration']%60)}s)")
-                source_title = preview_meta["title"]
-
-        except Exception as e:
-            st.error(f"Could not load URL preview: {e}")
+                st.markdown(f"### {cached_meta['title']}")
+                st.caption(
+                    f"👤 Channel: **{cached_meta['uploader']}** | "
+                    f"⏱ Duration: **{cached_meta['duration']:.1f}s** ({int(cached_meta['duration']//60)}m {int(cached_meta['duration']%60)}s)"
+                )
 else:
     sources = list_source_videos()
     if sources:
@@ -57,7 +66,6 @@ else:
         selected_label = st.selectbox("Select Source Video from Library:", list(source_options.keys()))
         selected_video = source_options[selected_label]
         target_video_path = selected_video["file_path"]
-        source_title = selected_video["file_name"]
     else:
         st.warning("No local source videos found. Please select 'Web Video URL' above or drop files in `/videos/input/`.")
 
@@ -70,8 +78,12 @@ with c1:
 with c2:
     max_clips = st.slider("Max Shorts to Generate:", 1, 10, 3)
 with c3:
-    crop_mode = st.selectbox("Vertical Framing Mode:", ["smart", "blur_fill", "crop"], index=0,
-                             help="'smart': Face-tracking horizontal centering. 'blur_fill': Mirror background Shorts style. 'crop': Center crop.")
+    crop_mode = st.selectbox(
+        "Vertical Framing Mode:",
+        ["smart", "blur_fill", "crop"],
+        index=0,
+        help="'smart': Face-tracking horizontal centering. 'blur_fill': Mirror background Shorts style. 'crop': Center crop."
+    )
 
 c4, c5 = st.columns(2)
 with c4:
@@ -82,26 +94,45 @@ with c5:
 # Main Execution Button
 if st.button("🚀 Generate Shorts from Video Now", type="primary", use_container_width=True):
     pipeline = ClipGenerationPipeline()
+    results = []
 
     if input_mode == "🔗 Web Video URL (YouTube / Online Video)":
-        if not input_url.strip():
+        if not input_url:
             st.warning("Please enter a valid video URL first.")
             st.stop()
 
-        with st.status("🔄 Processing Video from URL...", expanded=True) as status:
+        with st.status("🔄 Processing Video...", expanded=True) as status:
             st.write("1. ⬇️ Downloading video stream in high quality...")
+            prog_bar = st.progress(0.0)
+            prog_txt = st.empty()
+
+            def on_progress(d):
+                if d.get("status") == "downloading":
+                    total = d.get("total_bytes") or d.get("total_bytes_estimate") or 1
+                    downloaded = d.get("downloaded_bytes") or 0
+                    p = min(1.0, max(0.0, downloaded / total))
+                    prog_bar.progress(p)
+                    speed = (d.get("speed") or 0) / (1024 * 1024)
+                    prog_txt.caption(f"Downloaded: {int(p * 100)}% ({speed:.1f} MB/s)")
+
             try:
-                dest_path, meta = url_downloader.download_video(input_url.strip())
-                st.write(f"✓ Video downloaded: **{dest_path.name}**")
+                dest_path, _ = url_downloader.download_video(
+                    input_url,
+                    meta_info=cached_meta,
+                    progress_callback=on_progress
+                )
+                prog_bar.progress(1.0)
+                prog_txt.caption("✓ Download Complete!")
+                st.write(f"✓ Video ready on disk: **{dest_path.name}**")
                 target_video_path = str(dest_path)
             except Exception as de:
                 status.update(label="❌ Download Failed", state="error")
                 st.error(f"Download error: {de}")
                 st.stop()
 
-            st.write("2. 🎙️ AI Speech Recognition with faster-whisper (auto-detecting language & timestamps)...")
-            st.write("3. 🧠 Multimodal moment detection (analyzing hook triggers & energy peaks)...")
-            st.write("4. 🎬 Rendering vertical 1080x1920 MP4 clips with karaoke subtitles & thumbnails...")
+            st.write("2. 🎙️ Local Speech Recognition (detecting spoken language & word timestamps)...")
+            st.write("3. 🧠 Multimodal AI moment detection (isolating viral 15–60s hooks)...")
+            st.write("4. 🎬 Rendering vertical 1080x1920 MP4 clips with karaoke captions & thumbnails...")
 
             try:
                 results = pipeline.process_source_video(target_video_path, auto_schedule=auto_sched)
@@ -113,7 +144,7 @@ if st.button("🚀 Generate Shorts from Video Now", type="primary", use_containe
 
     else:
         if not target_video_path:
-            st.warning("Please choose a source video.")
+            st.warning("Please select a video.")
             st.stop()
 
         with st.spinner("AI analyzing video, transcribing audio, and rendering vertical 9:16 shorts..."):

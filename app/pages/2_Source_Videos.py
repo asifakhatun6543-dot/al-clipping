@@ -38,10 +38,17 @@ with tab_url:
         fetch_preview = st.button("🔍 Fetch Preview", use_container_width=True)
 
     if video_url.strip():
-        try:
-            with st.spinner("Fetching video details..."):
-                info = url_downloader.extract_info(video_url.strip())
-            
+        cache_key = f"meta_{video_url.strip()}"
+        if cache_key not in st.session_state:
+            try:
+                with st.spinner("⚡ Fetching video details..."):
+                    st.session_state[cache_key] = url_downloader.extract_info(video_url.strip())
+            except Exception as e:
+                st.error(f"Could not load video: {e}")
+                st.session_state[cache_key] = None
+
+        info = st.session_state.get(cache_key)
+        if info:
             # Display preview card
             col_thumb, col_details = st.columns([3, 7])
             with col_thumb:
@@ -55,14 +62,14 @@ with tab_url:
                 with btn_c1:
                     if st.button("⬇️ Download to Input Folder", type="secondary", use_container_width=True):
                         with st.spinner("Downloading video in high quality..."):
-                            dest_path, _ = url_downloader.download_video(video_url.strip())
+                            dest_path, _ = url_downloader.download_video(video_url.strip(), meta_info=info)
                             st.success(f"Downloaded: {dest_path.name}! It has been added to the clipping queue.")
                             st.rerun()
 
                 with btn_c2:
                     if st.button("✂️ Download & Clip into Shorts Instantly", type="primary", use_container_width=True):
                         with st.spinner("Downloading video..."):
-                            dest_path, _ = url_downloader.download_video(video_url.strip())
+                            dest_path, _ = url_downloader.download_video(video_url.strip(), meta_info=info)
                         with st.spinner("AI transcribing, clipping, adding karaoke subtitles & rendering vertical 9:16 shorts..."):
                             pipeline = ClipGenerationPipeline()
                             results = pipeline.process_source_video(str(dest_path), auto_schedule=True)
