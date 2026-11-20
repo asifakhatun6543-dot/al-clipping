@@ -72,19 +72,38 @@ with col_setup:
     st.markdown("---")
     st.subheader("🔐 Step 2: Authorize YouTube Channel (`dexoxye@gmail.com`)")
 
-    # Offer two seamless methods
-    auth_tab1, auth_tab2 = st.tabs(["⚡ Method 1: Automatic Browser Login", "🔗 Method 2: Direct Google Link (Recommended)"])
+    # Offer three seamless methods
+    auth_tab1, auth_tab2, auth_tab3 = st.tabs([
+        "📥 Method 1: Paste/Upload Token (Recommended for Streamlit Cloud)",
+        "🔗 Method 2: Direct Google Link & Code",
+        "💻 Method 3: Localhost Port 8080 (PC Only)"
+    ])
 
     with auth_tab1:
-        st.write("Starts a local listener on an open port and automatically opens your browser:")
-        if st.button("🚀 Launch Automatic Login", type="primary", key="btn_auto_oauth", disabled=not is_configured):
-            with st.spinner("Starting local listener and opening Google login..."):
-                success, msg = auth.start_local_auth_flow()
-                if success:
-                    st.success(msg)
+        st.write("Paste your generated `token.json` text below or upload the file to connect your channel instantly with zero redirect:")
+        col_tok_up, col_tok_paste = st.columns([1, 1])
+        with col_tok_up:
+            up_tok = st.file_uploader("Upload token.json:", type=["json"], key="up_token_file")
+            if up_tok is not None:
+                if st.button("💾 Save Uploaded token.json", key="btn_save_up_token", type="primary"):
+                    with open(config.token_path, "wb") as f:
+                        f.write(up_tok.getbuffer())
+                    st.success("✅ Token saved successfully! Refreshing...")
                     st.rerun()
+        with col_tok_paste:
+            tok_text = st.text_area("Or Paste token.json JSON Text:", height=150, placeholder='{"token": "ya29...", "refresh_token": "1//0g...", "token_uri": "https://oauth2.googleapis.com/token", ...}')
+            if st.button("💾 Save & Connect Token", key="btn_save_paste_token", type="primary"):
+                if tok_text.strip():
+                    try:
+                        parsed_tok = json.loads(tok_text.strip())
+                        with open(config.token_path, "w", encoding="utf-8") as f:
+                            json.dump(parsed_tok, f, indent=2)
+                        st.success("✅ Token saved and verified! Refreshing...")
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"Invalid JSON format: {e}")
                 else:
-                    st.error(msg)
+                    st.warning("Please paste your token JSON.")
 
     with auth_tab2:
         st.write("Use this if your browser or firewall blocks local redirects:")
@@ -114,6 +133,17 @@ with col_setup:
                             st.error(msg)
                 else:
                     st.warning("Please paste the URL or code before clicking Complete.")
+
+    with auth_tab3:
+        st.write("Starts a local listener on an open port on your computer (Only works when running AutoTube on `localhost`):")
+        if st.button("🚀 Launch Automatic Local Login", type="secondary", key="btn_auto_oauth", disabled=not is_configured):
+            with st.spinner("Starting local listener and opening Google login..."):
+                success, msg = auth.start_local_auth_flow()
+                if success:
+                    st.success(msg)
+                    st.rerun()
+                else:
+                    st.error(msg)
 
     st.markdown("---")
     st.subheader("⚙️ Publishing Defaults")

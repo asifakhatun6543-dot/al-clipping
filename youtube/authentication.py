@@ -44,8 +44,20 @@ class YouTubeAuthenticator:
         self.token_path = token_path or config.token_path
 
     def is_configured(self) -> bool:
-        """Returns True if client_secret.json is provided."""
-        return self.client_secret_path.exists() and self.client_secret_path.stat().st_size > 10
+        """Returns True if client_secret.json is provided or in st.secrets."""
+        if self.client_secret_path.exists() and self.client_secret_path.stat().st_size > 10:
+            return True
+        try:
+            import streamlit as st
+            if "client_secret" in st.secrets:
+                val = st.secrets["client_secret"]
+                content = val if isinstance(val, str) else json.dumps(dict(val))
+                with open(self.client_secret_path, "w", encoding="utf-8") as f:
+                    f.write(content)
+                return True
+        except Exception:
+            pass
+        return False
 
     def is_authenticated(self) -> bool:
         """Returns True if valid or refreshable credentials exist."""
@@ -54,6 +66,17 @@ class YouTubeAuthenticator:
 
     def get_credentials(self) -> Optional[Credentials]:
         """Loads cached credentials from token.json and refreshes them if expired."""
+        if not self.token_path.exists():
+            try:
+                import streamlit as st
+                if "youtube_token" in st.secrets:
+                    val = st.secrets["youtube_token"]
+                    content = val if isinstance(val, str) else json.dumps(dict(val))
+                    with open(self.token_path, "w", encoding="utf-8") as f:
+                        f.write(content)
+            except Exception:
+                pass
+
         if not self.token_path.exists():
             return None
 
