@@ -1,6 +1,6 @@
 """
 AutoTube AI - Source Videos Management
-View, ingest, and inspect raw video sources
+View, ingest, and inspect video sources from Local Files or Web URLs (YouTube, Vimeo, etc.)
 """
 
 import shutil
@@ -8,6 +8,8 @@ from pathlib import Path
 import streamlit as st
 from core.config import config
 from database.db import list_source_videos, register_source_video
+from services.url_downloader import VideoURLDownloader
+from video.clip_generator import ClipGenerationPipeline
 from app.ui_components import inject_custom_css, render_sidebar
 from core.automation import engine
 
@@ -15,12 +17,64 @@ inject_custom_css()
 render_sidebar()
 
 st.title("📁 Source Videos Repository")
-st.caption("Manage raw videos stored in `videos/input/`. Supports MP4, MOV, MKV, and WEBM.")
+st.caption("Manage source videos. Ingest raw files or import directly from YouTube & Web URLs.")
 
-# Direct File Upload UI
-with st.expander("📤 Add New Source Video", expanded=False):
+url_downloader = VideoURLDownloader()
+
+# Ingest Options: URL vs File Upload
+st.markdown("### 📥 Ingest New Video")
+tab_url, tab_upload = st.tabs(["🔗 Import from Video URL (YouTube, Vimeo, etc.)", "📤 Local File Upload"])
+
+with tab_url:
+    st.write("Paste any public YouTube, Vimeo, or web video link (like autoclip.dev):")
+    col_input, col_action = st.columns([8, 2])
+    with col_input:
+        video_url = st.text_input(
+            "Video URL:",
+            placeholder="e.g. https://youtu.be/4gWOqYhxiko or https://www.youtube.com/watch?v=...",
+            label_visibility="collapsed"
+        )
+    with col_action:
+        fetch_preview = st.button("🔍 Fetch Preview", use_container_width=True)
+
+    if video_url.strip():
+        try:
+            with st.spinner("Fetching video details..."):
+                info = url_downloader.extract_info(video_url.strip())
+            
+            # Display preview card
+            col_thumb, col_details = st.columns([3, 7])
+            with col_thumb:
+                if info.get("thumbnail"):
+                    st.image(info["thumbnail"], use_container_width=True)
+            with col_details:
+                st.markdown(f"#### {info['title']}")
+                st.caption(f"👤 Channel: **{info['uploader']}** | ⏱ Duration: **{int(info['duration']//60)}m {int(info['duration']%60)}s** ({info['duration']:.1f}s)")
+                
+                btn_c1, btn_c2 = st.columns(2)
+                with btn_c1:
+                    if st.button("⬇️ Download to Input Folder", type="secondary", use_container_width=True):
+                        with st.spinner("Downloading video in high quality..."):
+                            dest_path, _ = url_downloader.download_video(video_url.strip())
+                            st.success(f"Downloaded: {dest_path.name}! It has been added to the clipping queue.")
+                            st.rerun()
+
+                with btn_c2:
+                    if st.button("✂️ Download & Clip into Shorts Instantly", type="primary", use_container_width=True):
+                        with st.spinner("Downloading video..."):
+                            dest_path, _ = url_downloader.download_video(video_url.strip())
+                        with st.spinner("AI transcribing, clipping, adding karaoke subtitles & rendering vertical 9:16 shorts..."):
+                            pipeline = ClipGenerationPipeline()
+                            results = pipeline.process_source_video(str(dest_path), auto_schedule=True)
+                            st.success(f"🎉 Generated {len(results)} viral short clips from URL!")
+                            st.rerun()
+
+        except Exception as e:
+            st.error(f"Could not load video preview: {e}")
+
+with tab_upload:
     uploaded_file = st.file_uploader(
-        "Upload a video file (properly licensed or user-owned):",
+        "Upload a video file from your computer (MP4, MOV, MKV, WEBM):",
         type=["mp4", "mov", "mkv", "webm"]
     )
     if uploaded_file is not None:
@@ -31,13 +85,16 @@ with st.expander("📤 Add New Source Video", expanded=False):
             st.success(f"Video saved to {save_dest.name}! It will be picked up by the automation engine.")
             st.rerun()
 
-# Controls row
+st.markdown("---")
+
+# List existing source videos
 c1, c2 = st.columns([8, 2])
+with c1:
+    st.markdown("### 📋 Source Video Catalog")
 with c2:
     if st.button("🔄 Refresh List", use_container_width=True):
         st.rerun()
 
-# List videos
 videos = list_source_videos(limit=100)
 
 if videos:
@@ -64,4 +121,4 @@ if videos:
                 unsafe_allow_html=True
             )
 else:
-    st.info("No source videos found. Place your video files in `videos/input/` or upload one above.")
+    st.info("No source videos found. Paste a video URL above or place files in `videos/input/`.")

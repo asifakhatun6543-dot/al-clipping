@@ -22,52 +22,89 @@ is_authenticated = auth.is_authenticated()
 
 # Status Banner
 if is_authenticated:
-    st.success("✅ YouTube Account Authorized & Ready for Automatic Publishing")
+    st.success("✅ Google Account Authorized (`dexoxye@gmail.com`) & YouTube API Connected!")
     ch_info = auth.get_channel_info()
     if ch_info:
-        c1, c2 = st.columns([2, 8])
-        with c1:
-            if ch_info.get("thumbnail"):
-                st.image(ch_info["thumbnail"], width=100)
-        with c2:
-            st.markdown(f"### {ch_info.get('title')}")
-            st.caption(f"Channel ID: `{ch_info.get('id')}` | Subscribers: **{ch_info.get('subscriber_count')}** | Uploads: **{ch_info.get('video_count')}**")
+        if ch_info.get("needs_creation"):
+            st.warning("⚠️ Aapke is Google account par abhi tak YouTube Channel create nahi hua hai. Shorts upload karne ke liye 5 second mein apna channel create karein:")
+            st.link_button("👉 Click Here to Create YouTube Channel", "https://www.youtube.com/create_channel", type="primary")
+        else:
+            c1, c2 = st.columns([2, 8])
+            with c1:
+                if ch_info.get("thumbnail"):
+                    st.image(ch_info["thumbnail"], width=100)
+            with c2:
+                st.markdown(f"### {ch_info.get('title')}")
+                st.caption(f"Channel ID: `{ch_info.get('id')}` | Subscribers: **{ch_info.get('subscriber_count')}** | Uploads: **{ch_info.get('video_count')}**")
 elif is_configured:
-    st.warning("⚠️ Client Secret provided, but OAuth token not yet authorized. Click 'Connect YouTube Account' below.")
+    st.warning("⚠️ Client Secret verified! Connect your channel below to enable automatic YouTube Shorts uploads.")
 else:
     st.error("❌ Google OAuth Client Credentials (`client_secret.json`) missing.")
 
 st.markdown("---")
 
-# OAuth Setup & Upload Form
 col_setup, col_guide = st.columns([6, 6])
 
 with col_setup:
     st.subheader("🔑 Step 1: OAuth Credentials Status")
     if is_configured:
         st.success("✅ `client_secret.json` is installed and verified!")
-        st.caption(f"File location: `{config.client_secret_path}`")
+        st.caption(f"Location: `{config.client_secret_path}`")
     else:
         st.info("Upload your OAuth 2.0 Client Secret JSON file below:")
-
-    uploaded_secret = st.file_uploader("Upload new / replace Client Secret JSON:", type=["json"])
-    if uploaded_secret is not None:
-        if st.button("Save client_secret.json", key="btn_save_secret"):
-            with open(config.client_secret_path, "wb") as f:
-                f.write(uploaded_secret.getbuffer())
-            st.success("Client secrets saved successfully! Now proceed to Step 2.")
-            st.rerun()
-
-    st.subheader("🔐 Step 2: Authorize YouTube Channel")
-    st.write("Click below to open the Google authorization window and connect your YouTube channel.")
-    if st.button("🚀 Connect YouTube Account (Run OAuth)", type="primary", disabled=not is_configured):
-        with st.spinner("Opening Google login window in your browser..."):
-            success, msg = auth.start_local_auth_flow()
-            if success:
-                st.success(msg)
+        uploaded_secret = st.file_uploader("Upload client_secret.json:", type=["json"])
+        if uploaded_secret is not None:
+            if st.button("Save client_secret.json", key="btn_save_secret"):
+                with open(config.client_secret_path, "wb") as f:
+                    f.write(uploaded_secret.getbuffer())
+                st.success("Client secrets saved successfully!")
                 st.rerun()
-            else:
-                st.error(msg)
+
+    st.markdown("---")
+    st.subheader("🔐 Step 2: Authorize YouTube Channel (`dexoxye@gmail.com`)")
+
+    # Offer two seamless methods
+    auth_tab1, auth_tab2 = st.tabs(["⚡ Method 1: Automatic Browser Login", "🔗 Method 2: Direct Google Link (Recommended)"])
+
+    with auth_tab1:
+        st.write("Starts a local listener on an open port and automatically opens your browser:")
+        if st.button("🚀 Launch Automatic Login", type="primary", key="btn_auto_oauth", disabled=not is_configured):
+            with st.spinner("Starting local listener and opening Google login..."):
+                success, msg = auth.start_local_auth_flow()
+                if success:
+                    st.success(msg)
+                    st.rerun()
+                else:
+                    st.error(msg)
+
+    with auth_tab2:
+        st.write("Use this if your browser or firewall blocks local redirects:")
+        email_hint = st.text_input("Google Account Email:", value="dexoxye@gmail.com")
+        
+        if st.button("Generate Google Authorization Link", key="btn_gen_link", disabled=not is_configured):
+            auth_url, state = auth.generate_manual_auth_url(login_hint=email_hint.strip())
+            st.session_state["manual_auth_url"] = auth_url
+
+        if "manual_auth_url" in st.session_state:
+            st.markdown(f"""
+            **1. Click the link below to open Google's authorization page in a new tab:**  
+            👉 [**Click Here to Authorize AutoTube on Google**]({st.session_state['manual_auth_url']})
+            """)
+            st.markdown("**2. Sign in, click 'Continue' / 'Allow', and copy the full URL from your browser's address bar or the code.**")
+            
+            code_input = st.text_input("3. Paste the Redirected URL or Authorization Code here:", key="manual_code_input")
+            if st.button("✅ Complete Authorization & Connect Channel", type="primary", key="btn_submit_code"):
+                if code_input.strip():
+                    with st.spinner("Exchanging code for YouTube upload tokens..."):
+                        success, msg = auth.exchange_code_for_token(code_input.strip())
+                        if success:
+                            st.success(msg)
+                            st.session_state.pop("manual_auth_url", None)
+                            st.rerun()
+                        else:
+                            st.error(msg)
+                else:
+                    st.warning("Please paste the URL or code before clicking Complete.")
 
     st.markdown("---")
     st.subheader("⚙️ Publishing Defaults")
@@ -81,20 +118,17 @@ with col_guide:
     st.subheader("📖 Zero-Cost Google Cloud Setup Guide")
     st.markdown(
         """
-        To obtain your free **client_secret.json**:
-        1. Go to **[Google Cloud Console](https://console.cloud.google.com/)** (100% Free).
-        2. Create a new project called `AutoTube-AI`.
-        3. Navigate to **APIs & Services** > **Library** and search for **YouTube Data API v3**. Click **Enable**.
-        4. Go to **APIs & Services** > **OAuth consent screen**:
-           - Choose **External**.
-           - Fill in App Name (`AutoTube AI`) and your email.
-           - Under **Test Users**, add your YouTube account email.
-        5. Go to **Credentials** > **Create Credentials** > **OAuth client ID**:
-           - Application type: **Desktop app**.
-           - Name: `AutoTube Desktop Client`.
-           - Click **Create**.
-        6. Click **Download JSON**, rename it to `client_secret.json`, and upload it on this page.
+        Your project details:
+        - **Project ID:** `ferrous-gate-515213-i8`
+        - **Account:** `dexoxye@gmail.com`
         
-        *Quota notice: YouTube provides 10,000 free quota units per day (sufficient for ~6 Shorts uploads per day).*
+        **Important Google Cloud Console Checklist for `dexoxye@gmail.com`:**
+        1. In [Google Cloud Console](https://console.cloud.google.com/):
+           - Ensure **YouTube Data API v3** is **Enabled**.
+        2. In **OAuth consent screen**:
+           - User Type: **External**
+           - Under **Test Users**, make sure `dexoxye@gmail.com` is added! (If not added, Google shows a 403 access_denied warning).
+        3. When signing in, if Google says *"Google hasn't verified this app"*:
+           - Click **Advanced** > **Go to AutoTube AI (unsafe)** > Click **Continue**.
         """
     )

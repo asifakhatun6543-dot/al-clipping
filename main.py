@@ -67,6 +67,24 @@ def run_process_video(video_path: str):
         print(f" - [{c['duration']:.1f}s] {c['title']} -> {c['file_path']}")
 
 
+def run_process_url(video_url: str):
+    """Downloads a video from a URL and automatically processes it into Shorts."""
+    from services.url_downloader import VideoURLDownloader
+    from video.clip_generator import ClipGenerationPipeline
+
+    print(f"Fetching and downloading video from URL: {video_url}")
+    downloader = VideoURLDownloader()
+    dest_path, meta = downloader.download_video(video_url)
+    print(f"Downloaded: {dest_path.name} ({dest_path.stat().st_size / (1024*1024):.1f} MB)")
+
+    print("Running AI clipping pipeline...")
+    pipeline = ClipGenerationPipeline()
+    clips = pipeline.process_source_video(str(dest_path), auto_schedule=True)
+    print(f"\nCompleted! Generated {len(clips)} short clips from URL:")
+    for c in clips:
+        print(f" - [{c['duration']:.1f}s] {c['title']} -> {c['file_path']}")
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="AutoTube AI: Autonomous YouTube Shorts Clipping & Publishing System"
@@ -85,6 +103,11 @@ def main():
         "--process",
         type=str,
         help="Process a single video file directly via CLI"
+    )
+    parser.add_argument(
+        "--url",
+        type=str,
+        help="Download and clip video directly from YouTube or Web URL"
     )
     parser.add_argument(
         "--status",
@@ -116,6 +139,10 @@ def main():
 
     if args.process:
         run_process_video(args.process)
+        return
+
+    if args.url:
+        run_process_url(args.url)
         return
 
     if args.worker:

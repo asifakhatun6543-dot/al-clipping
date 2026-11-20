@@ -4,11 +4,12 @@
 # Dashboard & Web Interface
 streamlit>=1.35.0
 
-# Video & Image Processing
+# Video & Image Processing & URL Ingestion
 opencv-python-headless>=4.8.0.76
 pillow>=10.0.0
 numpy>=1.24.0
 scipy>=1.11.0
+yt-dlp>=2026.10.0
 
 # Background Automation & Scheduling
 apscheduler>=3.10.0
