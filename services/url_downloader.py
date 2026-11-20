@@ -35,18 +35,25 @@ class VideoURLDownloader:
             "quiet": True,
             "no_warnings": True,
             "ffmpeg_location": self.ffmpeg_bin,
-            # Prefer 720p MP4 for fast download & high quality (Shorts target is 1080x1920)
-            "format": "bestvideo[height<=720][ext=mp4]+bestaudio[ext=m4a]/best[height<=720][ext=mp4]/best[ext=mp4]/best",
+            # Progressive direct stream to eliminate HTTP 403 Forbidden
+            "format": "best[ext=mp4]/bestvideo[ext=mp4]+bestaudio[ext=m4a]/best",
             "merge_output_format": "mp4",
-            "socket_timeout": 15,
-            "retries": 3,
-            "concurrent_fragment_downloads": 4,
+            "socket_timeout": 25,
+            "retries": 5,
+            "http_headers": {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                "Accept-Language": "en-US,en;q=0.9",
+            },
             "extractor_args": {
                 "youtube": {
                     "player_client": ["android", "ios"]
                 }
             }
         }
+        cookie_file = config.base_dir / "cookies.txt"
+        if cookie_file.exists() and cookie_file.stat().st_size > 10:
+            opts["cookiefile"] = str(cookie_file.resolve())
+
         if progress_hook:
             opts["progress_hooks"] = [progress_hook]
         return opts
@@ -160,13 +167,18 @@ class VideoURLDownloader:
         opts = self.get_default_ydl_opts(progress_hook=_hook)
         opts["outtmpl"] = str(self.output_dir / f"{clean_title}.%(ext)s")
 
-        if max_duration_seconds and meta["duration"] > max_duration_seconds:
-            opts["download_ranges"] = yt_dlp.utils.download_range_func(None, [(0, max_duration_seconds)])
-            opts["force_keyframes_at_cuts"] = True
-
         try:
             with yt_dlp.YoutubeDL(opts) as ydl:
                 ydl.download([clean_url])
+        except Exception as e:
+            if "403" in str(e) or "Forbidden" in str(e):
+                log_warning("URLDownloader", f"Got 403 on primary download, trying resilient android_vr fallback: {e}")
+                opts["extractor_args"] = {"youtube": {"player_client": ["android_vr"]}}
+                opts["format"] = "18/best[ext=mp4]/best"
+                with yt_dlp.YoutubeDL(opts) as ydl:
+                    ydl.download([clean_url])
+            else:
+                raise
 
             target_file = dest_path
             if not target_file.exists():
