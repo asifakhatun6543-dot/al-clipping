@@ -30,7 +30,7 @@ url_downloader = VideoURLDownloader()
 
 input_mode = st.radio(
     "Choose Input Source:",
-    ["🔗 Web Video URL (YouTube / Online Video)", "📁 Local Library Video"],
+    ["🔗 Web Video URL (YouTube / Online Video)", "📤 Upload Video Directly", "📁 Local Library Video"],
     horizontal=True
 )
 
@@ -68,6 +68,38 @@ if input_mode == "🔗 Web Video URL (YouTube / Online Video)":
                     f"👤 Channel: **{cached_meta['uploader']}** | "
                     f"⏱ Duration: **{cached_meta['duration']:.1f}s** ({int(cached_meta['duration']//60)}m {int(cached_meta['duration']%60)}s)"
                 )
+
+    with st.expander("🛡️ YouTube 403 Forbidden / Anti-Bot Bypass (Cookies / Direct Upload)"):
+        st.markdown("""
+        **Why does 403 Forbidden occur?**  
+        YouTube blocks cloud servers (Streamlit Cloud / AWS) from automated downloading without user authentication.
+        
+        **Quick Solutions:**
+        1. **Instant Fix:** Switch to the **'📤 Upload Video Directly'** tab above to upload any video file (MP4, MOV, MKV). It clips immediately with zero restrictions!
+        2. **Cloud Link Scraping:** Upload your `cookies.txt` (exported via the free extension *'Get cookies.txt LOCALLY'*) below:
+        """)
+        cookie_file_up = st.file_uploader("Upload cookies.txt:", type=["txt"], key="clip_cookie_uploader")
+        if cookie_file_up is not None:
+            if st.button("💾 Save cookies.txt", key="btn_save_clip_cookie"):
+                with open(config.base_dir / "cookies.txt", "wb") as f:
+                    f.write(cookie_file_up.getbuffer())
+                st.success("✅ cookies.txt saved! YouTube link downloads are now authenticated.")
+                st.rerun()
+
+elif input_mode == "📤 Upload Video Directly":
+    st.markdown("#### 📤 Upload Video from Device")
+    st.info("💡 Direct file upload is 100% immune to YouTube bot checks and 403 errors!")
+    direct_file = st.file_uploader(
+        "Choose video file (MP4, MOV, MKV, WEBM):",
+        type=["mp4", "mov", "mkv", "webm"],
+        key="direct_file_upload"
+    )
+    if direct_file is not None:
+        save_target = config.input_dir / direct_file.name
+        with open(save_target, "wb") as f:
+            f.write(direct_file.getbuffer())
+        target_video_path = str(save_target)
+        st.success(f"✓ Video ready for clipping: **{direct_file.name}** ({direct_file.size / (1024*1024):.1f} MB)")
 else:
     sources = list_source_videos()
     if sources:
@@ -76,7 +108,7 @@ else:
         selected_video = source_options[selected_label]
         target_video_path = selected_video["file_path"]
     else:
-        st.warning("No local source videos found. Please select 'Web Video URL' above or drop files in `/videos/input/`.")
+        st.warning("No local source videos found. Please select 'Web Video URL' or 'Upload Video Directly' above.")
 
 st.markdown("---")
 st.markdown("### ⚙️ Shorts Generation Parameters")
@@ -137,7 +169,7 @@ if st.button("🚀 Generate Shorts from Video Now", type="primary", use_containe
             except Exception as de:
                 status.update(label="❌ Download Failed", state="error")
                 if "403" in str(de) or "Forbidden" in str(de) or "bot" in str(de):
-                    st.error("❌ YouTube blocked this cloud download (HTTP 403 Forbidden / Anti-Bot check). Please use the '📤 Local File Upload' tab in Source Videos to upload the video directly, or add cookies.txt!")
+                    st.error("❌ YouTube blocked this cloud download (HTTP 403 Forbidden / Anti-Bot check). Please use the '📤 Upload Video Directly' option above to clip immediately with 0 errors, or add cookies.txt!")
                 else:
                     st.error(f"Download error: {de}")
                 st.stop()

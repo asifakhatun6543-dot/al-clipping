@@ -35,10 +35,11 @@ class VideoURLDownloader:
             "quiet": True,
             "no_warnings": True,
             "ffmpeg_location": self.ffmpeg_bin,
-            # Progressive direct stream to eliminate HTTP 403 Forbidden
-            "format": "best[ext=mp4]/bestvideo[ext=mp4]+bestaudio[ext=m4a]/best",
+            "remote_components": ["ejs:github"],
+            # High quality mp4 priority with progressive fallback
+            "format": "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/18/best",
             "merge_output_format": "mp4",
-            "socket_timeout": 25,
+            "socket_timeout": 30,
             "retries": 5,
             "http_headers": {
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
@@ -46,7 +47,7 @@ class VideoURLDownloader:
             },
             "extractor_args": {
                 "youtube": {
-                    "player_client": ["android", "ios"]
+                    "player_client": ["web_embedded", "android"]
                 }
             }
         }
@@ -71,17 +72,22 @@ class VideoURLDownloader:
             "quiet": True,
             "no_warnings": True,
             "skip_download": True,
-            "socket_timeout": 8,
+            "socket_timeout": 12,
             "no_playlist": True,
             "check_formats": False,
             "youtube_include_dash_manifest": False,
             "youtube_include_hls_manifest": False,
+            "remote_components": ["ejs:github"],
             "extractor_args": {
                 "youtube": {
-                    "player_client": ["android", "ios"]
+                    "player_client": ["web_embedded", "android"]
                 }
             }
         }
+        cookie_file = config.base_dir / "cookies.txt"
+        if cookie_file.exists() and cookie_file.stat().st_size > 10:
+            opts["cookiefile"] = str(cookie_file.resolve())
+
         try:
             with yt_dlp.YoutubeDL(opts) as ydl:
                 info = ydl.extract_info(clean_url, download=False)
@@ -98,19 +104,22 @@ class VideoURLDownloader:
                 _URL_INFO_CACHE[clean_url] = result
                 return result
         except Exception as e:
-            log_warning("URLDownloader", f"Android client failed, retrying with fallback clients: {e}")
-            # Fallback to general client if android fails
+            log_warning("URLDownloader", f"Primary metadata extraction encountered: {e}. Trying android fallback...")
             fallback_opts = {
                 "quiet": True,
                 "no_warnings": True,
                 "skip_download": True,
                 "socket_timeout": 15,
+                "remote_components": ["ejs:github"],
                 "extractor_args": {
                     "youtube": {
-                        "player_client": ["ios", "mweb"]
+                        "player_client": ["android"]
                     }
                 }
             }
+            if cookie_file.exists() and cookie_file.stat().st_size > 10:
+                fallback_opts["cookiefile"] = str(cookie_file.resolve())
+
             try:
                 with yt_dlp.YoutubeDL(fallback_opts) as ydl:
                     info = ydl.extract_info(clean_url, download=False)
@@ -167,18 +176,35 @@ class VideoURLDownloader:
         opts = self.get_default_ydl_opts(progress_hook=_hook)
         opts["outtmpl"] = str(self.output_dir / f"{clean_title}.%(ext)s")
 
-        try:
-            with yt_dlp.YoutubeDL(opts) as ydl:
-                ydl.download([clean_url])
-        except Exception as e:
-            if "403" in str(e) or "Forbidden" in str(e) or "bot" in str(e):
-                log_warning("URLDownloader", f"Primary download encountered restriction ({e}), trying fallback client...")
-                opts["extractor_args"] = {"youtube": {"player_client": ["android"]}}
-                opts["format"] = "18/best[ext=mp4]/best"
+        # Robust multi-client download cascade to prevent HTTP 403 Forbidden
+        download_success = False
+        last_error = None
+
+        strategies = [
+            ("web_embedded+android", ["web_embedded", "android"], "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/18/best"),
+            ("android-direct", ["android"], "18/best[ext=mp4]/best"),
+            ("ios", ["ios"], "best[ext=mp4]/best"),
+            ("mweb", ["mweb"], "18/best[ext=mp4]/best"),
+        ]
+
+        for strat_name, clients, fmt in strategies:
+            try:
+                log_info("URLDownloader", f"Attempting download strategy: {strat_name}...")
+                opts["extractor_args"] = {"youtube": {"player_client": clients}}
+                opts["format"] = fmt
                 with yt_dlp.YoutubeDL(opts) as ydl:
                     ydl.download([clean_url])
-            else:
-                raise
+                download_success = True
+                log_info("URLDownloader", f"Strategy '{strat_name}' succeeded!")
+                break
+            except Exception as e:
+                last_error = e
+                log_warning("URLDownloader", f"Strategy '{strat_name}' failed: {e}. Trying next strategy...")
+
+        if not download_success:
+            err_msg = str(last_error) if last_error else "Unknown download error"
+            log_error("URLDownloader", f"All download strategies failed: {err_msg}")
+            raise RuntimeError(f"Download error: {err_msg}")
 
         target_file = dest_path
         if not target_file.exists():
