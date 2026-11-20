@@ -14,7 +14,10 @@ HOOK_WORDS = {
     "why", "how", "what", "secret", "never", "always", "best", "worst", "insane",
     "crazy", "mistake", "stop", "remember", "truth", "money", "dollar", "trick",
     "hack", "proven", "simple", "easy", "watch", "look", "listen", "believe",
-    "unbelievable", "huge", "biggest", "first", "million", "billion", "rule"
+    "unbelievable", "huge", "biggest", "first", "million", "billion", "rule",
+    "bro", "gta", "gta6", "speed", "omg", "dead", "died", "kill", "clutch",
+    "police", "caught", "screaming", "rage", "chill", "nah", "crash", "banned",
+    "run", "help", "wait", "ending", "shock", "glitch", "first time"
 }
 
 QUESTION_STARTERS = (

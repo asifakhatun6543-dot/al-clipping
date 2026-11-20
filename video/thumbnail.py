@@ -166,9 +166,9 @@ class ThumbnailGenerator:
             clean_text = " ".join(words[:6]) + "!"
 
         # Try loading system font, fallback to default
-        font_size = 72
+        font_size = 84
         font = None
-        for font_candidate in ["arialbd.ttf", "impact.ttf", "arial.ttf", "segoeui.ttf"]:
+        for font_candidate in ["impact.ttf", "arialbd.ttf", "arial.ttf", "segoeui.ttf"]:
             try:
                 font = ImageFont.truetype(font_candidate, font_size)
                 break
@@ -187,13 +187,13 @@ class ThumbnailGenerator:
             lines = [" ".join(words)]
 
         # Position text in upper-third (safe from YouTube Shorts bottom bar and right action buttons)
-        y_cursor = 240
+        y_cursor = 230
 
-        # Draw red "SHORTS EXCLUSIVE" pill badge
-        badge_text = "✦ AUTOTUBE AI ✦"
+        # Draw red viral pill badge (e.g. GTA 6 EXCLUSIVE, MUST WATCH)
+        badge_text = "🔴 GTA 6 EXCLUSIVE" if ("gta" in text.lower() or "speed" in text.lower()) else "🔴 MUST WATCH"
         badge_font = font
         try:
-            badge_font = ImageFont.truetype("arialbd.ttf", 36)
+            badge_font = ImageFont.truetype("arialbd.ttf", 38)
         except Exception:
             pass
 
@@ -206,7 +206,7 @@ class ThumbnailGenerator:
         draw.rounded_rectangle(
             [badge_x - padding, badge_y - padding // 2, badge_x + bw + padding, badge_y + bh + padding // 2],
             radius=12,
-            fill=(255, 0, 68)  # YouTube Red
+            fill=(255, 0, 50)  # Intense YouTube Red
         )
         draw.text((badge_x, badge_y), badge_text, font=badge_font, fill=(255, 255, 255))
 
@@ -217,6 +217,6 @@ class ThumbnailGenerator:
             lx = (w - lw) // 2
             
             # Thick black outline
-            stroke_w = 6
+            stroke_w = 8
             draw.text((lx, y_cursor), line, font=font, fill=(255, 222, 0), stroke_width=stroke_w, stroke_fill=(0, 0, 0))
             y_cursor += (bbox[3] - bbox[1]) + 28

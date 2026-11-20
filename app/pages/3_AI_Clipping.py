@@ -89,9 +89,9 @@ with c2:
 with c3:
     crop_mode = st.selectbox(
         "Vertical Framing Mode:",
-        ["smart", "blur_fill", "crop"],
+        ["split_gaming", "smart", "blur_fill", "crop"],
         index=0,
-        help="'smart': Face-tracking horizontal centering. 'blur_fill': Mirror background Shorts style. 'crop': Center crop."
+        help="'split_gaming': Streamer reaction on TOP + Gameplay on BOTTOM (Viral Gaming Shorts). 'smart': Face-tracking horizontal centering. 'blur_fill': Mirror background Shorts style. 'crop': Center crop."
     )
 
 c4, c5 = st.columns(2)

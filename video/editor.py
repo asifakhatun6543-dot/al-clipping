@@ -48,12 +48,37 @@ class VideoEditor:
         
         # Determine 9:16 framing
         is_horizontal = source_width >= source_height
-        
-        if is_horizontal:
+        top_h = int(self.target_height * 0.45)
+        bot_h = self.target_height - top_h
+
+        if crop_mode == "split_gaming":
+            # Viral Gaming Split-Screen: Streamer Reaction on Top, Gameplay on Bottom
+            if is_horizontal:
+                cam_w = int(source_width * 0.38)
+                cam_h = int(source_height * 0.55)
+                cam_x = int(source_width - cam_w) if focal_center_x > 0.45 else 0
+                cam_y = 0
+                vf_layout = (
+                    "split=2[in_cam][in_game];"
+                    f"[in_cam]crop={cam_w}:{cam_h}:{cam_x}:{cam_y},scale={self.target_width}:{top_h}:flags=lanczos,unsharp=3:3:0.6:3:3:0.0[cam];"
+                    f"[in_game]crop={source_width}:{source_height}:0:0,scale={self.target_width}:{bot_h}:flags=lanczos,unsharp=3:3:0.6:3:3:0.0[game];"
+                    f"[cam][game]vstack=inputs=2[stacked];"
+                    f"[stacked]drawbox=y={top_h-2}:h=4:color=white@0.85:t=fill"
+                )
+            else:
+                src_top_h = int(source_height * 0.45)
+                src_bot_h = source_height - src_top_h
+                vf_layout = (
+                    "split=2[in_cam][in_game];"
+                    f"[in_cam]crop={source_width}:{src_top_h}:0:0,scale={self.target_width}:{top_h}:flags=lanczos,unsharp=3:3:0.6:3:3:0.0[cam];"
+                    f"[in_game]crop={source_width}:{src_bot_h}:0:{src_top_h},scale={self.target_width}:{bot_h}:flags=lanczos,unsharp=3:3:0.6:3:3:0.0[game];"
+                    f"[cam][game]vstack=inputs=2[stacked];"
+                    f"[stacked]drawbox=y={top_h-2}:h=4:color=white@0.85:t=fill"
+                )
+            video_filters.append(vf_layout)
+        elif is_horizontal:
             if crop_mode == "blur_fill":
                 # High-end Shorts blurred background layout
-                # [0:v] split [bg][fg]; [bg] scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,boxblur=25:5 [blurred];
-                # [fg] scale=1080:-2 [sharp]; [blurred][sharp] overlay=(W-w)/2:(H-h)/2
                 vf_layout = (
                     "split=2[bg][fg];"
                     f"[bg]scale={self.target_width}:{self.target_height}:force_original_aspect_ratio=increase,"
@@ -65,23 +90,20 @@ class VideoEditor:
             elif crop_mode == "smart":
                 # Smart crop around subject focal center
                 crop_w = int(source_height * (9.0 / 16.0))
-                # Ensure even width
                 crop_w = crop_w - (crop_w % 2)
-                # Compute X offset
                 x_center_px = int(focal_center_x * source_width)
                 x_offset = max(0, min(source_width - crop_w, x_center_px - (crop_w // 2)))
                 x_offset = x_offset - (x_offset % 2)
-                
-                vf_crop = f"crop={crop_w}:{source_height}:{x_offset}:0,scale={self.target_width}:{self.target_height}"
+                vf_crop = f"crop={crop_w}:{source_height}:{x_offset}:0,scale={self.target_width}:{self.target_height}:flags=lanczos,unsharp=3:3:0.6:3:3:0.0"
                 video_filters.append(vf_crop)
             else: # Center crop
                 crop_w = int(source_height * (9.0 / 16.0))
                 crop_w = crop_w - (crop_w % 2)
-                vf_crop = f"crop={crop_w}:{source_height}:(in_w-{crop_w})/2:0,scale={self.target_width}:{self.target_height}"
+                vf_crop = f"crop={crop_w}:{source_height}:(in_w-{crop_w})/2:0,scale={self.target_width}:{self.target_height}:flags=lanczos,unsharp=3:3:0.6:3:3:0.0"
                 video_filters.append(vf_crop)
         else:
             # Already vertical or square, scale and pad to 1080x1920
-            vf_scale = f"scale={self.target_width}:{self.target_height}:force_original_aspect_ratio=decrease,pad={self.target_width}:{self.target_height}:(ow-iw)/2:(oh-ih)/2:black"
+            vf_scale = f"scale={self.target_width}:{self.target_height}:force_original_aspect_ratio=decrease,pad={self.target_width}:{self.target_height}:(ow-iw)/2:(oh-ih)/2:black,unsharp=3:3:0.6:3:3:0.0"
             video_filters.append(vf_scale)
 
         # Append ASS subtitles if available
@@ -133,11 +155,14 @@ class VideoEditor:
             if normalize_audio:
                 cmd.extend(["-af", f"loudnorm=I={config.target_lufs}:LRA=7:tp=-1.5"])
 
-        # Output encoding settings
+        # Output encoding settings - Crisp 60fps & visually lossless CRF 17
         cmd.extend([
             "-c:v", config.video_codec,
-            "-preset", "fast",
-            "-crf", "22",
+            "-preset", "medium",
+            "-crf", "17",
+            "-b:v", config.video_bitrate,
+            "-maxrate", "12000k",
+            "-bufsize", "24000k",
             "-r", str(config.fps),
             "-c:a", config.audio_codec,
             "-b:a", config.audio_bitrate,

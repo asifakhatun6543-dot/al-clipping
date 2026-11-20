@@ -41,11 +41,14 @@ with st.form("settings_form"):
     st.subheader("📐 9:16 Vertical Framing & Subtitles")
     c4, c5 = st.columns(2)
     with c4:
+        valid_modes = ["split_gaming", "smart", "blur_fill", "crop"]
+        cur_mode = current_settings.get("crop_mode", config.crop_mode)
+        mode_idx = valid_modes.index(cur_mode) if cur_mode in valid_modes else 0
         crop_mode = st.selectbox(
-            "Intelligent Cropping Mode:",
-            ["smart", "blur_fill", "crop"],
-            index=["smart", "blur_fill", "crop"].index(current_settings.get("crop_mode", config.crop_mode)),
-            help="'smart': auto-detects and centers on speaker/face. 'blur_fill': blurred mirror background Shorts style. 'crop': center crop."
+            "Intelligent Cropping & Layout Mode:",
+            valid_modes,
+            index=mode_idx,
+            help="'split_gaming': Streamer reaction on TOP + Gameplay on BOTTOM (Viral Gaming Shorts). 'smart': auto-detects and centers on speaker/face. 'blur_fill': blurred mirror background Shorts style. 'crop': center crop."
         )
     with c5:
         whisper_size = st.selectbox(

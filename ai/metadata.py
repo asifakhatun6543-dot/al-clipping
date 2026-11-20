@@ -54,26 +54,69 @@ class MetadataGenerator:
         word_counts = Counter(meaningful_words)
         top_keywords = [w for w, _ in word_counts.most_common(8)]
 
-        # 2. Generate Catchy Title (< 60 chars)
-        title = self._craft_title(clean_text, top_keywords, source_title, clip_number)
+        # Check if gaming content (GTA 6, Minecraft, Call of Duty, Streamers)
+        combined_text = f"{source_title} {clean_text}".lower()
+        gaming_signals = {"gta", "gta6", "speed", "ishowspeed", "game", "gaming", "minecraft", "cod", "duty", "fortnite", "clutch", "fail", "glitch", "streamer", "stream", "play"}
+        is_gaming = any(sig in combined_text for sig in gaming_signals)
 
-        # 3. Generate Description
-        description = self._craft_description(clean_text, title, top_keywords)
+        if is_gaming:
+            title = self._craft_gaming_title(clean_text, source_title, clip_number)
+            description = self._craft_gaming_description(clean_text, title, source_title)
+            hashtags = ["#Shorts", "#GTA6", "#IShowSpeed", "#Gaming", "#GamingShorts", "#Viral", "#Trending"]
+            keywords = "gta 6 gameplay, ishowspeed gta 6, gta 6 reaction, best gaming moments, funny gaming shorts, viral gaming clip, gta 6 release, minecraft funny moments, call of duty clutch, trending gaming shorts"
+            category_id = "20"  # Gaming
+        else:
+            title = self._craft_title(clean_text, top_keywords, source_title, clip_number)
+            description = self._craft_description(clean_text, title, top_keywords)
+            hashtags = self._craft_hashtags(top_keywords)
+            keywords = ", ".join(top_keywords[:10])
+            category_id = self._detect_category(meaningful_words)
 
-        # 4. Generate Hashtags
-        hashtags = self._craft_hashtags(top_keywords)
-
-        # 5. Detect YouTube Category
-        category_id = self._detect_category(meaningful_words)
-
-        log_info("MetadataGenerator", f"Generated metadata for clip #{clip_number}: '{title}'")
+        log_info("MetadataGenerator", f"Generated pro metadata for clip #{clip_number}: '{title}' (Gaming: {is_gaming})")
         return {
             "title": title,
             "description": description,
-            "keywords": ", ".join(top_keywords[:10]),
+            "keywords": keywords,
             "hashtags": " ".join(hashtags),
             "category_id": category_id
         }
+
+    def _craft_gaming_title(self, text: str, source_title: str, clip_number: int) -> str:
+        """Crafts high-CTR viral clickbait gaming titles for Shorts."""
+        clean_source = source_title.replace("_", " ").replace("-", " ")
+        creator = "IShowSpeed" if "speed" in clean_source.lower() else "Bro"
+        game = "GTA 6" if ("gta" in clean_source.lower() or "gta6" in clean_source.lower()) else "Gaming"
+
+        templates = [
+            f"{creator} FIRST TIME IN {game}! 💀🔥 #Shorts #{game.replace(' ', '')}",
+            f"HE WAS NOT READY FOR {game} POLICE! 😭🚔 #Shorts",
+            f"BRO GOT CAUGHT IN 4K ON {game}?! 💀🎮 #Shorts",
+            f"THE CRAZIEST {game} MOMENT YET! 😱🔥 #Shorts",
+            f"{creator} CANNOT BELIEVE THIS HAPPENED IN {game}! 😭 #Shorts",
+            f"BRO REALLY THOUGHT HE ESCAPED IN {game} 💀 #Shorts",
+            f"{creator} UNHINGED MOMENTS IN {game} 😂🎮 #Shorts"
+        ]
+        chosen = templates[(clip_number - 1) % len(templates)]
+        return chosen[:100]
+
+    def _craft_gaming_description(self, text: str, title: str, source_title: str) -> str:
+        """Crafts high-retention gaming description with SEO tags and call to action."""
+        lines = [
+            f"{title}",
+            "",
+            "😱 Watch the most unhinged and insane gaming moment!",
+            "",
+            "🔥 Drop a LIKE and SUBSCRIBE if you're hyped for GTA 6 & daily gaming shorts! 🔔",
+            "",
+            "🎮 Game: Grand Theft Auto VI (GTA 6) / Gaming Clips",
+            "👤 Streamer: IShowSpeed / Creator Reaction",
+            "",
+            "Tags & SEO Queries:",
+            "gta 6 gameplay, ishowspeed gta 6, funny gaming moments, best gaming clips, gta 6 release date, trending gaming shorts, viral shorts",
+            "",
+            "#Shorts #GTA6 #IShowSpeed #Gaming #GamingShorts #GTA #Viral #Trending #Minecraft #CallOfDuty"
+        ]
+        return "\n".join(lines)
 
     def _craft_title(self, text: str, top_keywords: List[str], source_title: str, clip_number: int) -> str:
         """Crafts a concise hook title with #Shorts."""

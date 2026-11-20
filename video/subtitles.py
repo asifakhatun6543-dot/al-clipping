@@ -24,15 +24,15 @@ def format_ass_time(seconds: float) -> str:
 class SubtitleGenerator:
     def __init__(
         self,
-        font_name: str = "Arial",
-        font_size: int = 44,
-        primary_color: str = "&H00FFFFFF",    # White (AABBGGRR in ASS)
-        highlight_color: str = "&H0026FFFF",  # Bright Yellow / Gold (AABBGGRR)
-        outline_color: str = "&H00000000",    # Black
-        outline_width: int = 4,
-        shadow_depth: int = 2,
+        font_name: str = "Impact",
+        font_size: int = 58,
+        primary_color: str = "&H00FFFFFF",    # Crisp White (AABBGGRR in ASS)
+        highlight_color: str = "&H0000FFFF",  # Electric Neon Yellow (AABBGGRR)
+        outline_color: str = "&H00000000",    # Solid Black
+        outline_width: int = 6,
+        shadow_depth: int = 3,
         alignment: int = 2,  # 2 = Bottom-Center in ASS
-        margin_v: int = 400  # Vertical margin from bottom to stay clear of YouTube Shorts UI buttons
+        margin_v: int = 880  # Positioned directly at center junction between reaction and gameplay
     ):
         self.font_name = font_name
         self.font_size = font_size
@@ -49,7 +49,7 @@ class SubtitleGenerator:
         words: List[Dict[str, Any]],
         output_ass_path: str,
         clip_start_offset: float = 0.0,
-        max_words_per_line: int = 4
+        max_words_per_line: int = 2
     ) -> Path:
         """
         Creates an ASS subtitle file where each spoken word lights up dynamically

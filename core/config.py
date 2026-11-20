@@ -45,11 +45,12 @@ class AppConfig:
     # Video specification (YouTube Shorts 9:16)
     target_width: int = 1080
     target_height: int = 1920
-    fps: int = 30
+    fps: int = 60
     video_codec: str = "libx264"
     audio_codec: str = "aac"
     audio_bitrate: str = "192k"
-    video_bitrate: str = "4500k"
+    video_bitrate: str = "8500k"
+    quality_preset: str = "1080p_60fps"  # '1080p_60fps', '4k_60fps'
 
     # AI Clipping Durations (seconds)
     min_clip_duration: float = 15.0
@@ -57,19 +58,24 @@ class AppConfig:
     default_clip_duration: float = 35.0
     max_clips_per_video: int = 5
 
-    # Intelligent Cropping: 'smart' (face/motion centered), 'crop' (center 9:16), 'blur_fill' (letterbox with blurred mirror bg)
-    crop_mode: str = "smart"
+    # Intelligent Cropping & Layout:
+    # 'split_gaming' (Streamer on Top, Gameplay on Bottom - Viral Shorts layout)
+    # 'smart' (face/motion centered), 'crop' (center 9:16), 'blur_fill' (letterbox with blurred mirror bg)
+    crop_mode: str = "split_gaming"
+    facecam_position: str = "auto"  # 'auto', 'top_right', 'top_left', 'bottom_right', 'bottom_left'
+    hook_banner_text: str = "WAIT TILL THE END 💀"
 
-    # Subtitles (Word-by-word Karaoke)
+    # Subtitles (Word-by-word High-Retention Gaming Karaoke)
     karaoke_enabled: bool = True
-    subtitle_font: str = "Arial"
-    font_size: int = 48
-    highlight_color: str = "&H00D7FF"  # ASS Hex for bright Gold/Yellow
-    text_color: str = "&HFFFFFF"       # ASS Hex for White
-    outline_color: str = "&H000000"    # ASS Hex for Black
-    outline_width: int = 3
-    shadow_depth: int = 2
-    max_words_per_subtitle_line: int = 4
+    subtitle_font: str = "Impact"
+    font_size: int = 56
+    highlight_color: str = "&H0000FFFF"  # ASS Hex for Electric Neon Yellow (&HAABBGGRR)
+    text_color: str = "&H00FFFFFF"       # ASS Hex for Crisp White
+    outline_color: str = "&H00000000"    # Solid Black
+    outline_width: int = 5
+    shadow_depth: int = 3
+    max_words_per_subtitle_line: int = 2  # Punchy 1-2 words at a time
+    subtitle_margin_v: int = 880          # Positioned directly at center junction between reaction and game
 
     # Audio normalization & Background Music
     normalize_audio: bool = True

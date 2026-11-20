@@ -64,10 +64,14 @@ class VideoURLDownloader:
             "quiet": True,
             "no_warnings": True,
             "skip_download": True,
-            "socket_timeout": 10,
+            "socket_timeout": 8,
+            "no_playlist": True,
+            "check_formats": False,
+            "youtube_include_dash_manifest": False,
+            "youtube_include_hls_manifest": False,
             "extractor_args": {
                 "youtube": {
-                    "player_client": ["android"]
+                    "player_client": ["android", "ios"]
                 }
             }
         }
