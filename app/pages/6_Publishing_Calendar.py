@@ -3,6 +3,15 @@ AutoTube AI - Publishing Calendar
 Visual timetable and calendar view of scheduled YouTube Shorts
 """
 
+import sys
+from pathlib import Path
+
+# Ensure project root is in sys.path on Streamlit Cloud & local
+_ROOT_DIR = Path(__file__).resolve().parents[2]
+if str(_ROOT_DIR) not in sys.path:
+    sys.path.insert(0, str(_ROOT_DIR))
+
+
 import json
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo

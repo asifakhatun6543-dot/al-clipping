@@ -3,6 +3,15 @@ AutoTube AI - System Audit & Error Logs
 Real-time inspection of pipeline logs, warnings, and errors
 """
 
+import sys
+from pathlib import Path
+
+# Ensure project root is in sys.path on Streamlit Cloud & local
+_ROOT_DIR = Path(__file__).resolve().parents[2]
+if str(_ROOT_DIR) not in sys.path:
+    sys.path.insert(0, str(_ROOT_DIR))
+
+
 import streamlit as st
 from database.db import get_recent_logs, clear_logs
 from app.ui_components import inject_custom_css, render_sidebar

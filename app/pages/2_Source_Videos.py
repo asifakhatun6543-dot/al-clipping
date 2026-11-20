@@ -3,6 +3,15 @@ AutoTube AI - Source Videos Management
 View, ingest, and inspect video sources from Local Files or Web URLs (YouTube, Vimeo, etc.)
 """
 
+import sys
+from pathlib import Path
+
+# Ensure project root is in sys.path on Streamlit Cloud & local
+_ROOT_DIR = Path(__file__).resolve().parents[2]
+if str(_ROOT_DIR) not in sys.path:
+    sys.path.insert(0, str(_ROOT_DIR))
+
+
 import shutil
 from pathlib import Path
 import streamlit as st
@@ -75,9 +84,6 @@ with tab_url:
                             results = pipeline.process_source_video(str(dest_path), auto_schedule=True)
                             st.success(f"🎉 Generated {len(results)} viral short clips from URL!")
                             st.rerun()
-
-        except Exception as e:
-            st.error(f"Could not load video preview: {e}")
 
 with tab_upload:
     uploaded_file = st.file_uploader(

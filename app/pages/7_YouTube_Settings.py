@@ -3,6 +3,15 @@ AutoTube AI - YouTube Data API v3 & OAuth Settings
 Official Google OAuth 2.0 configuration, channel diagnostics, and publishing policies
 """
 
+import sys
+from pathlib import Path
+
+# Ensure project root is in sys.path on Streamlit Cloud & local
+_ROOT_DIR = Path(__file__).resolve().parents[2]
+if str(_ROOT_DIR) not in sys.path:
+    sys.path.insert(0, str(_ROOT_DIR))
+
+
 from pathlib import Path
 import streamlit as st
 from core.config import config

@@ -3,6 +3,15 @@ AutoTube AI - Publishing Upload Queue
 Inspect and manage scheduled YouTube Shorts waiting in line to be published
 """
 
+import sys
+from pathlib import Path
+
+# Ensure project root is in sys.path on Streamlit Cloud & local
+_ROOT_DIR = Path(__file__).resolve().parents[2]
+if str(_ROOT_DIR) not in sys.path:
+    sys.path.insert(0, str(_ROOT_DIR))
+
+
 from datetime import datetime
 from zoneinfo import ZoneInfo
 import streamlit as st
