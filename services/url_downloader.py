@@ -171,35 +171,31 @@ class VideoURLDownloader:
             with yt_dlp.YoutubeDL(opts) as ydl:
                 ydl.download([clean_url])
         except Exception as e:
-            if "403" in str(e) or "Forbidden" in str(e):
-                log_warning("URLDownloader", f"Got 403 on primary download, trying resilient android_vr fallback: {e}")
-                opts["extractor_args"] = {"youtube": {"player_client": ["android_vr"]}}
+            if "403" in str(e) or "Forbidden" in str(e) or "bot" in str(e):
+                log_warning("URLDownloader", f"Primary download encountered restriction ({e}), trying fallback client...")
+                opts["extractor_args"] = {"youtube": {"player_client": ["android"]}}
                 opts["format"] = "18/best[ext=mp4]/best"
                 with yt_dlp.YoutubeDL(opts) as ydl:
                     ydl.download([clean_url])
             else:
                 raise
 
-            target_file = dest_path
-            if not target_file.exists():
-                candidates = list(self.output_dir.glob(f"{clean_title}.*"))
-                if candidates:
-                    target_file = candidates[0]
+        target_file = dest_path
+        if not target_file.exists():
+            candidates = list(self.output_dir.glob(f"{clean_title}.*"))
+            if candidates:
+                target_file = candidates[0]
 
-            if not target_file.exists() or target_file.stat().st_size == 0:
-                raise RuntimeError(f"Downloaded file {target_file.name} is missing or 0 bytes.")
+        if not target_file.exists() or target_file.stat().st_size == 0:
+            raise RuntimeError(f"Downloaded file {target_file.name} is missing or 0 bytes.")
 
-            log_info("URLDownloader", f"Downloaded {target_file.name} ({target_file.stat().st_size / (1024*1024):.1f} MB)")
+        log_info("URLDownloader", f"Downloaded {target_file.name} ({target_file.stat().st_size / (1024*1024):.1f} MB)")
 
-            register_source_video(
-                file_path=str(target_file.resolve()),
-                file_name=target_file.name,
-                file_size_bytes=target_file.stat().st_size,
-                duration_seconds=meta["duration"]
-            )
+        register_source_video(
+            file_path=str(target_file.resolve()),
+            file_name=target_file.name,
+            file_size_bytes=target_file.stat().st_size,
+            duration_seconds=meta["duration"]
+        )
 
-            return target_file, meta
-
-        except Exception as e:
-            log_error("URLDownloader", f"Download failed: {e}")
-            raise
+        return target_file, meta

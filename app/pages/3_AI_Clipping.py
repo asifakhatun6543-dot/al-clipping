@@ -136,7 +136,10 @@ if st.button("🚀 Generate Shorts from Video Now", type="primary", use_containe
                 target_video_path = str(dest_path)
             except Exception as de:
                 status.update(label="❌ Download Failed", state="error")
-                st.error(f"Download error: {de}")
+                if "403" in str(de) or "Forbidden" in str(de) or "bot" in str(de):
+                    st.error("❌ YouTube blocked this cloud download (HTTP 403 Forbidden / Anti-Bot check). Please use the '📤 Local File Upload' tab in Source Videos to upload the video directly, or add cookies.txt!")
+                else:
+                    st.error(f"Download error: {de}")
                 st.stop()
 
             st.write("2. 🎙️ Local Speech Recognition (detecting spoken language & word timestamps)...")

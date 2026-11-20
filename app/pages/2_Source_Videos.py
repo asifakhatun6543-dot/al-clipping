@@ -70,20 +70,49 @@ with tab_url:
                 btn_c1, btn_c2 = st.columns(2)
                 with btn_c1:
                     if st.button("⬇️ Download to Input Folder", type="secondary", use_container_width=True):
-                        with st.spinner("Downloading video in high quality..."):
-                            dest_path, _ = url_downloader.download_video(video_url.strip(), meta_info=info)
-                            st.success(f"Downloaded: {dest_path.name}! It has been added to the clipping queue.")
-                            st.rerun()
+                        try:
+                            with st.spinner("Downloading video in high quality..."):
+                                dest_path, _ = url_downloader.download_video(video_url.strip(), meta_info=info)
+                                st.success(f"Downloaded: {dest_path.name}! It has been added to the clipping queue.")
+                                st.rerun()
+                        except Exception as err:
+                            if "403" in str(err) or "Forbidden" in str(err) or "bot" in str(err):
+                                st.error("❌ YouTube blocked this cloud download (HTTP 403 Forbidden / Bot Check). Please upload the video directly via the '📤 Local File Upload' tab above, or add cookies.txt below!")
+                            else:
+                                st.error(f"Download error: {err}")
 
                 with btn_c2:
                     if st.button("✂️ Download & Clip into Shorts Instantly", type="primary", use_container_width=True):
-                        with st.spinner("Downloading video..."):
-                            dest_path, _ = url_downloader.download_video(video_url.strip(), meta_info=info)
-                        with st.spinner("AI transcribing, clipping, adding karaoke subtitles & rendering vertical 9:16 shorts..."):
-                            pipeline = ClipGenerationPipeline()
-                            results = pipeline.process_source_video(str(dest_path), auto_schedule=True)
-                            st.success(f"🎉 Generated {len(results)} viral short clips from URL!")
-                            st.rerun()
+                        try:
+                            with st.spinner("Downloading video..."):
+                                dest_path, _ = url_downloader.download_video(video_url.strip(), meta_info=info)
+                            with st.spinner("AI transcribing, clipping, adding karaoke subtitles & rendering vertical 9:16 shorts..."):
+                                pipeline = ClipGenerationPipeline()
+                                results = pipeline.process_source_video(str(dest_path), auto_schedule=True)
+                                st.success(f"🎉 Generated {len(results)} viral short clips from URL!")
+                                st.rerun()
+                        except Exception as err:
+                            if "403" in str(err) or "Forbidden" in str(err) or "bot" in str(err):
+                                st.error("❌ YouTube blocked this cloud download (HTTP 403 Forbidden / Bot Check). Please upload the video directly via the '📤 Local File Upload' tab above, or add cookies.txt below!")
+                            else:
+                                st.error(f"Download error: {err}")
+
+    with st.expander("🛡️ YouTube 403 Forbidden / Anti-Bot Fix (Click Here)"):
+        st.markdown("""
+        **Why does HTTP Error 403 Forbidden happen?**  
+        YouTube blocks cloud servers (Streamlit Cloud / AWS) from scraping video streams directly without user session verification.
+        
+        **How to bypass it easily:**
+        1. **Recommended (Instant & 100% Reliable):** Download the video file and upload it in the **'📤 Local File Upload'** tab above. AutoTube will clip it instantly in full 60fps Split Gaming layout!
+        2. **Automatic Link Download (with cookies):** Export your YouTube cookies using the free Chrome/Edge extension *"Get cookies.txt LOCALLY"* and upload the `cookies.txt` file below:
+        """)
+        cookie_file_up = st.file_uploader("Upload cookies.txt:", type=["txt"], key="cookie_uploader")
+        if cookie_file_up is not None:
+            if st.button("💾 Save cookies.txt", key="btn_save_cookie"):
+                with open(config.base_dir / "cookies.txt", "wb") as f:
+                    f.write(cookie_file_up.getbuffer())
+                st.success("✅ cookies.txt saved! YouTube downloads are now verified.")
+                st.rerun()
 
 with tab_upload:
     uploaded_file = st.file_uploader(
